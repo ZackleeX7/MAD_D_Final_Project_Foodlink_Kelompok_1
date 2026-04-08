@@ -1,0 +1,1 @@
+"# MAD_D_Final_Project_Foodlink_Kelompok_1"  initgit add README.mdgit commit -m "first commit"git branch -M maingit remote add origin https://github.com/ZackleeX7/MAD_D_Final_Project_Foodlink_Kelompok_1.gitgit push -u origin main
