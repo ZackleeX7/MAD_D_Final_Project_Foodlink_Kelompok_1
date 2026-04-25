@@ -1,34 +1,66 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-import React from 'react';
+import { ComponentProps } from 'react';
 
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+type IconName = ComponentProps<typeof Ionicons>['name'];
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+      screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarButton: HapticTab,
-      }}>
+
+        // 🎨 THEME HIJAU
+        tabBarActiveTintColor: '#2ECC71',
+        tabBarInactiveTintColor: '#95A5A6',
+
+        tabBarStyle: {
+          backgroundColor: '#FFFFFF',
+          height: 60,
+          borderTopWidth: 0,
+          elevation: 5,
+        },
+
+        tabBarIcon: ({ color, size }) => {
+          let iconName: IconName = 'grid';
+
+          if (route.name === 'index') {
+            iconName = 'grid';
+          } else if (route.name === 'donate') {
+            iconName = 'add-circle';
+          } else if (route.name === 'track') {
+            iconName = 'bar-chart';
+          } else if (route.name === 'profile') {
+            iconName = 'person';
+          }
+
+          return <Ionicons name={iconName} size={size} color={color} />;
+        },
+      })}
+    >
+      {/* Dashboard */}
       <Tabs.Screen
         name="index"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
-        }}
+        options={{ title: 'Dashboard' }}
       />
+
+      {/* Donate (highlight hijau gelap) */}
       <Tabs.Screen
-        name="explore"
+        name="donate"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
-        }}
+          title: 'Donate'}}
+      />
+
+      {/* Track */}
+      <Tabs.Screen
+        name="track"
+        options={{ title: 'Track' }}
+      />
+
+      {/* Profile */}
+      <Tabs.Screen
+        name="profile"
+        options={{ title: 'Profile' }}
       />
     </Tabs>
   );
