@@ -15,7 +15,7 @@ type Donation = {
   status: DonationStatus;
 };
 
-// Simulasi fetch (nanti ganti API / Convex)
+// 🔥 Simulasi API
 const fetchDonations = async (): Promise<Donation[]> => {
   return new Promise((resolve) => {
     setTimeout(() => {
@@ -41,56 +41,60 @@ export default function Dashboard() {
       const result = await fetchDonations();
       setData(result);
     } catch (error) {
-      console.error('Error fetching donations:', error);
+      console.error(error);
     } finally {
       setLoading(false);
     }
   };
 
-  // Loading
   if (loading) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#2ECC71" />
-        <Text>Loading dashboard...</Text>
+        <Text>Loading...</Text>
       </View>
     );
   }
 
-  // Empty state
-  if (data.length === 0) {
-    return (
-      <View style={styles.center}>
-        <Text style={styles.emptyText}>Belum ada donasi</Text>
-        <Text style={{ color: 'gray' }}>
-          Mulai donasi untuk membantu sesama
-        </Text>
-      </View>
-    );
-  }
+  const pendingCount = data.filter((d) => d.status === 'pending').length;
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Dashboard</Text>
+      
+      {/* 🔥 HEADER */}
+      <View style={styles.header}>
+        <Text style={styles.greeting}>Dashboard</Text>
+        <Text style={styles.subtitle}>
+          Kamu punya {pendingCount} donasi aktif
+        </Text>
+      </View>
 
-      <Text style={styles.info}>
-        {data.filter((d) => d.status === 'pending').length} donasi aktif
-      </Text>
+      {/* 📊 IMPACT CARD */}
+      <View style={styles.impactCard}>
+        <Text style={styles.impactTitle}>Makanan didonasi</Text>
+        <Text style={styles.impactValue}>
+          {data.length} Porsi 🍽️
+        </Text>
+      </View>
 
+      {/* 📦 LIST DONASI */}
       <FlatList
         data={data}
         keyExtractor={(item) => item.id}
+        showsVerticalScrollIndicator={false}
         renderItem={({ item }) => (
           <View style={styles.card}>
-            <Text style={styles.food}>{item.food}</Text>
-
-            <Text style={getStatusStyle(item.status)}>
-              {item.status.toUpperCase()}
-            </Text>
+            
+            <View style={styles.row}>
+              <Text style={styles.food}>{item.food}</Text>
+              <Text style={getStatusStyle(item.status)}>
+                {item.status.toUpperCase()}
+              </Text>
+            </View>
 
             {item.status === 'pending' && (
               <Text style={styles.priority}>
-                Segera ambil
+                Segera diambil!
               </Text>
             )}
           </View>
@@ -100,60 +104,89 @@ export default function Dashboard() {
   );
 }
 
-// Styling status (type-safe)
+// 🔥 STATUS STYLE
 const getStatusStyle = (status: DonationStatus) => {
   switch (status) {
     case 'pending':
-      return { color: '#F39C12', fontWeight: 'bold' as const };
+      return { color: '#1ABC9C', fontWeight: 'bold' as const };
     case 'taken':
       return { color: '#2ECC71', fontWeight: 'bold' as const };
     case 'expired':
-      return { color: '#E74C3C', fontWeight: 'bold' as const };
+      return { color: '#95A5A6', fontWeight: 'bold' as const };
     default:
-      return { color: 'gray' as const };
+      return { color: '#95A5A6' as const };
   }
 };
 
+// 🎨 STYLE
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#F4FBF7',
     padding: 16,
   },
+
   center: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  title: {
-    fontSize: 24,
+
+  // HEADER
+  header: {
+    marginBottom: 16,
+    marginTop: 25,
+  },
+  greeting: {
+    fontSize: 22,
     fontWeight: 'bold',
-    marginBottom: 8,
-    marginTop: 30
+    color: '#27AE60',
   },
-  info: {
-    color: 'gray',
-    marginBottom: 12,
+  subtitle: {
+    color: '#7F8C8D',
   },
+
+  // IMPACT CARD
+  impactCard: {
+    backgroundColor: '#2ECC71',
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 16,
+  },
+  impactTitle: {
+    color: 'white',
+    fontSize: 14,
+  },
+  impactValue: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+
+  // LIST CARD
   card: {
     backgroundColor: 'white',
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
     elevation: 2,
+    borderLeftWidth: 5,
+    borderLeftColor: '#2ECC71',
   },
+
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+
   food: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 4,
   },
+
   priority: {
-    color: 'red',
-    marginTop: 4,
+    marginTop: 6,
+    color: '#E67E22',
     fontSize: 12,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: 'bold',
   },
 });
