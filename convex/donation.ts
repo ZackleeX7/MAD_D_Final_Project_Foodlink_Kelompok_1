@@ -1,17 +1,30 @@
-import { mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { mutation, query } from "./_generated/server";
 
+// 🔥 GET DATA (Dashboard)
+export const getDonations = query({
+  handler: async (ctx) => {
+    return await ctx.db
+      .query("donations")
+      .order("desc")
+      .collect();
+  },
+});
+
+// 🔥 ADD DATA (Donate screen nanti)
 export const addDonation = mutation({
   args: {
-    foodType: v.string(),
-    quantity: v.number(),
-    location: v.string(),
-    expiryTime: v.string(),
+    food: v.string(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("taken"),
+      v.literal("expired")
+    ),
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert("donations", {
-      ...args,
-      status: "pending",
+      food: args.food,
+      status: args.status,
     });
   },
 });

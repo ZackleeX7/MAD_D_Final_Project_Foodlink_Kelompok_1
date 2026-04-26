@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useQuery } from 'convex/react';
 import {
   ActivityIndicator,
   FlatList,
@@ -6,48 +6,23 @@ import {
   Text,
   View,
 } from 'react-native';
+import { api } from '../../convex/_generated/api';
 
-type DonationStatus = 'pending' | 'taken' | 'expired';
-
+// ✅ TYPE (WAJIB untuk hilangkan error TS)
 type Donation = {
-  id: string;
+  _id: string;
   food: string;
-  status: DonationStatus;
-};
-
-// 🔥 Simulasi API
-const fetchDonations = async (): Promise<Donation[]> => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve([
-        { id: '1', food: 'Nasi Goreng', status: 'pending' },
-        { id: '2', food: 'Roti', status: 'taken' },
-        { id: '3', food: 'Ayam Goreng', status: 'expired' },
-      ]);
-    }, 1000);
-  });
+  status: 'pending' | 'taken' | 'expired';
 };
 
 export default function Dashboard() {
-  const [data, setData] = useState<Donation[]>([]);
-  const [loading, setLoading] = useState(true);
+  // ✅ AMBIL DATA DARI CONVEX
+  const data = useQuery(api.donation.getDonations) as
+    | Donation[]
+    | undefined;
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    try {
-      const result = await fetchDonations();
-      setData(result);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
+  // ✅ LOADING STATE
+  if (data === undefined) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#2ECC71" />
@@ -56,12 +31,15 @@ export default function Dashboard() {
     );
   }
 
-  const pendingCount = data.filter((d) => d.status === 'pending').length;
+  // ✅ HITUNG DATA
+  const pendingCount = data.filter(
+    (d) => d.status === 'pending'
+  ).length;
 
   return (
     <View style={styles.container}>
       
-      {/* 🔥 HEADER */}
+      {/* HEADER */}
       <View style={styles.header}>
         <Text style={styles.greeting}>Dashboard</Text>
         <Text style={styles.subtitle}>
@@ -69,7 +47,7 @@ export default function Dashboard() {
         </Text>
       </View>
 
-      {/* 📊 IMPACT CARD */}
+      {/* IMPACT CARD */}
       <View style={styles.impactCard}>
         <Text style={styles.impactTitle}>Makanan didonasi</Text>
         <Text style={styles.impactValue}>
@@ -77,10 +55,10 @@ export default function Dashboard() {
         </Text>
       </View>
 
-      {/* 📦 LIST DONASI */}
+      {/* LIST DONASI */}
       <FlatList
         data={data}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item._id}
         showsVerticalScrollIndicator={false}
         renderItem={({ item }) => (
           <View style={styles.card}>
@@ -104,8 +82,10 @@ export default function Dashboard() {
   );
 }
 
-// 🔥 STATUS STYLE
-const getStatusStyle = (status: DonationStatus) => {
+// 🎨 STATUS STYLE
+const getStatusStyle = (
+  status: 'pending' | 'taken' | 'expired'
+) => {
   switch (status) {
     case 'pending':
       return { color: '#1ABC9C', fontWeight: 'bold' as const };
@@ -132,38 +112,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  // HEADER
   header: {
     marginBottom: 16,
     marginTop: 25,
   },
+
   greeting: {
     fontSize: 22,
     fontWeight: 'bold',
     color: '#27AE60',
   },
+
   subtitle: {
     color: '#7F8C8D',
   },
 
-  // IMPACT CARD
   impactCard: {
     backgroundColor: '#2ECC71',
     padding: 16,
     borderRadius: 16,
     marginBottom: 16,
   },
+
   impactTitle: {
     color: 'white',
     fontSize: 14,
   },
+
   impactValue: {
     color: 'white',
     fontSize: 18,
     fontWeight: 'bold',
   },
 
-  // LIST CARD
   card: {
     backgroundColor: 'white',
     padding: 16,
