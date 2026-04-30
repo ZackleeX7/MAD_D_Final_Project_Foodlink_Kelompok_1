@@ -1,131 +1,120 @@
-import { useEffect, useState } from 'react';
+import { useQuery } from "convex/react";
 import {
   ActivityIndicator,
   FlatList,
   StyleSheet,
   Text,
   View,
-} from 'react-native';
+} from "react-native";
+import { api } from "../../convex/_generated/api";
+import { Id } from "../../convex/_generated/dataModel";
 
-// ===== TYPES =====
-type TrackItem = {
-  id: string;
+type DonationStatus =
+  | "pending"
+  | "taken"
+  | "expired"
+  | "cancelled";
+
+type Donation = {
+  _id: Id<"donations">;
   food: string;
-  status: 'created' | 'taken' | 'completed';
-};
-
-type Summary = {
-  total: number;
-  completed: number;
-  peopleHelped: number;
-};
-
-// ===== MOCK FETCH (GANTI KE API / CONVEX NANTI) =====
-const fetchTrackData = async (): Promise<{
-  summary: Summary;
-  timeline: TrackItem[];
-}> => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        summary: {
-          total: 15,
-          completed: 12,
-          peopleHelped: 20,
-        },
-        timeline: [
-          {
-            id: '1',
-            food: 'Nasi Goreng',
-            status: 'completed',
-          },
-          {
-            id: '2',
-            food: 'Roti',
-            status: 'taken',
-          },
-          {
-            id: '3',
-            food: 'Ayam Goreng',
-            status: 'created',
-          },
-        ],
-      });
-    }, 1000);
-  });
+  status: DonationStatus;
 };
 
 export default function Track() {
-  const [data, setData] = useState<TrackItem[]>([]);
-  const [summary, setSummary] = useState<Summary | null>(null);
-  const [loading, setLoading] = useState(true);
+  const data = useQuery(api.donation.getDonations) as
+    | Donation[]
+    | undefined;
 
-  useEffect(() => {
-    loadTrack();
-  }, []);
-
-  const loadTrack = async () => {
-    try {
-      const result = await fetchTrackData();
-      setData(result.timeline);
-      setSummary(result.summary);
-    } catch (error) {
-      console.error('Error loading track:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ===== LOADING =====
-  if (loading) {
+  if (!data) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#2ECC71" />
-        <Text>Loading impact...</Text>
+        <Text>Loading...</Text>
       </View>
     );
   }
 
-  // ===== SAFETY =====
-  if (!summary) {
-    return (
-      <View style={styles.center}>
-        <Text>Gagal memuat data</Text>
-      </View>
-    );
-  }
+  // 🔥 FILTER (CANCELLED TIDAK DIHITUNG)
+  const activeDonations = data.filter(
+    (d) => d.status !== "cancelled"
+  );
+
+  const total = activeDonations.length;
+  const taken = activeDonations.filter(
+    (d) => d.status === "taken"
+  ).length;
+  const pending = activeDonations.filter(
+    (d) => d.status === "pending"
+  ).length;
+  const expired = activeDonations.filter(
+    (d) => d.status === "expired"
+  ).length;
 
   return (
     <View style={styles.container}>
-      
-      {/* 📊 SUMMARY */}
-      <View style={styles.summaryCard}>
-        <Text style={styles.summaryTitle}>Dampak Kamu</Text>
-        <Text style={styles.summaryValue}>
-          {summary.peopleHelped} Orang Terbantu 👥
-        </Text>
+      {/* HEADER */}
+      <Text style={styles.title}>Tracking Donasi</Text>
 
-        <View style={styles.summaryRow}>
-          <Text style={styles.summaryItem}>
-            📦 {summary.total} Donasi
+      {/* 📊 STATS */}
+      <View style={styles.statsContainer}>
+        <View style={styles.statBox}>
+          <Text style={styles.statValue}>{total}</Text>
+          <Text style={styles.statLabel}>Total</Text>
+        </View>
+
+        <View style={styles.statBox}>
+          <Text style={[styles.statValue, { color: "#2ECC71" }]}>
+            {taken}
           </Text>
-          <Text style={styles.summaryItem}>
-            ✅ {summary.completed} Selesai
+          <Text style={styles.statLabel}>Tersalurkan</Text>
+        </View>
+
+        <View style={styles.statBox}>
+          <Text style={[styles.statValue, { color: "#F39C12" }]}>
+            {pending}
           </Text>
+          <Text style={styles.statLabel}>Pending</Text>
+        </View>
+
+        <View style={styles.statBox}>
+          <Text style={[styles.statValue, { color: "#E74C3C" }]}>
+            {expired}
+          </Text>
+          <Text style={styles.statLabel}>Expired</Text>
         </View>
       </View>
 
-      {/* 📜 TIMELINE */}
+      {/* 📦 LIST */}
       <FlatList
         data={data}
-        keyExtractor={(item) => item.id}
-        showsVerticalScrollIndicator={false}
+        keyExtractor={(item) => item._id}
         renderItem={({ item }) => (
-          <View style={styles.timelineCard}>
-            <Text style={styles.food}>{item.food}</Text>
-            <Text style={getStatusText(item.status)}>
-              {getStatusLabel(item.status)}
+          <View style={styles.card}>
+            <View style={styles.row}>
+              {/* 🔴 DOT STATUS */}
+              <View
+                style={[
+                  styles.dot,
+                  {
+                    backgroundColor: getDotColor(item.status),
+                  },
+                ]}
+              />
+
+              <Text style={styles.food}>{item.food}</Text>
+            </View>
+
+            <Text style={getStatusStyle(item.status)}>
+              {item.status.toUpperCase()}
             </Text>
+
+            {/* 🔴 LABEL CANCEL */}
+            {item.status === "cancelled" && (
+              <Text style={styles.cancelled}>
+                ❌ Dibatalkan
+              </Text>
+            )}
           </View>
         )}
       />
@@ -133,90 +122,109 @@ export default function Track() {
   );
 }
 
-// ===== STATUS =====
-const getStatusLabel = (status: string) => {
+// 🎨 DOT COLOR
+const getDotColor = (status: DonationStatus) => {
   switch (status) {
-    case 'created':
-      return 'Dibuat';
-    case 'taken':
-      return 'Diambil';
-    case 'completed':
-      return 'Selesai';
-    default:
-      return '-';
+    case "pending":
+      return "#F39C12";
+    case "taken":
+      return "#2ECC71";
+    case "expired":
+      return "#95A5A6";
+    case "cancelled":
+      return "#E74C3C"; // 🔴 MERAH
   }
 };
 
-const getStatusText = (status: string) => {
+// 🎨 TEXT COLOR
+const getStatusStyle = (status: DonationStatus) => {
   switch (status) {
-    case 'created':
-      return { color: '#1ABC9C', fontWeight: 'bold' as const };
-    case 'taken':
-      return { color: '#F39C12', fontWeight: 'bold' as const };
-    case 'completed':
-      return { color: '#2ECC71', fontWeight: 'bold' as const };
-    default:
-      return { color: '#95A5A6' as const };
+    case "pending":
+      return { color: "#F39C12", fontWeight: "bold" as const };
+    case "taken":
+      return { color: "#2ECC71", fontWeight: "bold" as const };
+    case "expired":
+      return { color: "#95A5A6", fontWeight: "bold" as const };
+    case "cancelled":
+      return { color: "#E74C3C", fontWeight: "bold" as const };
   }
 };
 
-// ===== STYLES =====
+// 🎨 STYLE
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F4FBF7',
+    backgroundColor: "#F4FBF7",
     padding: 16,
   },
 
   center: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
 
-  // SUMMARY
-  summaryCard: {
-    backgroundColor: '#2ECC71',
-    padding: 16,
-    borderRadius: 16,
+  title: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "#27AE60",
+    marginTop: 30,
     marginBottom: 16,
-    marginTop: 40,
   },
 
-  summaryTitle: {
-    color: 'white',
-    fontSize: 14,
+  statsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 20,
   },
 
-  summaryValue: {
-    color: 'white',
+  statBox: {
+    backgroundColor: "white",
+    padding: 12,
+    borderRadius: 10,
+    alignItems: "center",
+    width: "25%",
+  },
+
+  statValue: {
     fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 8,
+    fontWeight: "bold",
   },
 
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  statLabel: {
+    fontSize: 12,
+    color: "#7F8C8D",
   },
 
-  summaryItem: {
-    color: 'white',
-  },
-
-  // TIMELINE
-  timelineCard: {
-    backgroundColor: 'white',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
+  card: {
+    backgroundColor: "white",
+    padding: 14,
+    borderRadius: 10,
+    marginBottom: 10,
     elevation: 2,
-    borderLeftWidth: 5,
-    borderLeftColor: '#2ECC71',
+  },
+
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 4,
+  },
+
+  dot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
 
   food: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: "600",
+  },
+
+  cancelled: {
+    marginTop: 6,
+    fontSize: 12,
+    color: "#E74C3C",
   },
 });
